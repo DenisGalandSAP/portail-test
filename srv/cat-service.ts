@@ -45,7 +45,7 @@ export default class CatalogService extends cds.ApplicationService {
                 await audit.emit('DataAccess', {
                     user: req.user.id,
                     tenant: req.tenant || 'provider',
-                    ip: ipAddress,
+                    // BTP AuditLog V2 DataAccess does NOT support "ip" or "data" fields
                     object: {
                         type: 'Book',
                         id: { ID: req.data.ID }
@@ -55,7 +55,6 @@ export default class CatalogService extends cds.ApplicationService {
                         role: 'Updater',
                         id: { ID: req.data.ID }
                     },
-                    data: req.data,
                     attributes: [
                         { name: "trace_id" },
                         { name: "action" }
@@ -72,11 +71,12 @@ export default class CatalogService extends cds.ApplicationService {
 
                 LOG.info(`[Audit Log] SecurityEvent error for Book ${req.data.ID} by user ${req.user.id}. trace_id: ${traceId}`);
 
-                await audit.emit('SecurityEvent', {
+                // Use `cds.unboxed(audit)` if this transaction is going to be rolled back via `throw error;`.
+                // BTP AuditLog V2 SecurityEvent schema does NOT support the "attributes" field. Mix them into "data".
+                await (cds as any).unboxed(audit).emit('SecurityEvent', {
                     user: req.user.id,
                     ip: ipAddress,
-                    data: `Failed to update Book ${req.data.ID}`,
-                    attributes: { trace_id: traceId, error: error.message }
+                    data: `Failed to update Book ${req.data.ID}. trace_id: ${traceId}, error: ${error.message}`
                 });
 
                 throw error;
@@ -107,10 +107,11 @@ export default class CatalogService extends cds.ApplicationService {
             LOG.info(`[Audit Log] DataAccess event by user: ${req.user.id}, ip: ${ipAddress}, action: READ_BOOK, target: Books${requestedId}`);
 
             // Actual audit call (Must comply with BTP Audit Log V2 schema)
-            await audit.emit('DataAccess', {
+            // Use `cds.unboxed` because READ requests don't have database commits to trigger the outbox
+            await (cds as any).unboxed(audit).emit('DataAccess', {
                 user: req.user.id,
                 tenant: req.tenant || 'provider',
-                ip: ipAddress,
+                // BTP AuditLog V2 DataAccess does NOT support "ip" or "data" fields
                 object: {
                     type: 'Book',
                     id: { ID: req.data.ID || 'multiple' }
@@ -120,10 +121,9 @@ export default class CatalogService extends cds.ApplicationService {
                     role: 'Reader',
                     id: { ID: req.data.ID || 'multiple' }
                 },
-                data: req.query,
                 attributes: [
-                    { name: "trace_id", old: "", new: traceId },
-                    { name: "action", old: "", new: "READ_BOOK_DETAILS" }
+                    { name: "trace_id" },
+                    { name: "action" }
                 ]
             });
         });

@@ -1,14 +1,14 @@
 @odata
 service CatalogService {
-  @PersonalData.EntitySemantics: 'DataSubject'
+  // @PersonalData.EntitySemantics: 'DataSubject'
   entity Books {
-        @PersonalData.FieldSemantics: 'DataSubjectID'
+        // @PersonalData.FieldSemantics: 'DataSubjectID'
     key ID     : Integer;
 
-        @PersonalData.IsPotentiallyPersonal
+        // @PersonalData.IsPotentiallyPersonal
         title  : String;
 
-        @PersonalData.IsPotentiallySensitive
+        // @PersonalData.IsPotentiallySensitive
         author : String;
   }
 }
